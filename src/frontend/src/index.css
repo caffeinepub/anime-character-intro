@@ -1,0 +1,239 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("/assets/fonts/BricolageGrotesque.woff2") format("woff2");
+  font-weight: 200 800;
+  font-display: swap;
+}
+
+@layer base {
+  :root {
+    --radius: 0.5rem;
+    --background: 0.08 0.01 280;
+    --foreground: 0.98 0 0;
+    --card: 0.12 0.015 280;
+    --card-foreground: 0.98 0 0;
+    --popover: 0.12 0.015 280;
+    --popover-foreground: 0.98 0 0;
+    --primary: 0.75 0.18 264;
+    --primary-foreground: 0.08 0.01 280;
+    --secondary: 0.2 0.02 280;
+    --secondary-foreground: 0.98 0 0;
+    --muted: 0.18 0.015 280;
+    --muted-foreground: 0.6 0.05 280;
+    --accent: 0.65 0.22 264;
+    --accent-foreground: 0.98 0 0;
+    --destructive: 0.62 0.24 27;
+    --destructive-foreground: 0.98 0 0;
+    --border: 1 0 0 / 10%;
+    --input: 1 0 0 / 12%;
+    --ring: 0.65 0.18 264;
+    --chart-1: 0.65 0.22 264;
+    --chart-2: 0.7 0.18 162;
+    --chart-3: 0.75 0.19 84;
+    --chart-4: 0.68 0.24 303;
+    --chart-5: 0.65 0.25 16;
+    --sidebar: 0.1 0.012 280;
+    --sidebar-foreground: 0.98 0 0;
+    --sidebar-primary: 0.65 0.22 264;
+    --sidebar-primary-foreground: 0.98 0 0;
+    --sidebar-accent: 0.18 0.015 280;
+    --sidebar-accent-foreground: 0.98 0 0;
+    --sidebar-border: 1 0 0 / 10%;
+    --sidebar-ring: 0.65 0.18 264;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Bricolage Grotesque", system-ui, sans-serif;
+    overflow: hidden;
+  }
+}
+
+@keyframes mouth-flap {
+  0% {
+    d: path("M -18 0 Q 0 0 18 0");
+  }
+  12% {
+    d: path("M -18 0 Q 0 8 18 0");
+  }
+  25% {
+    d: path("M -18 0 Q 0 16 18 0");
+  }
+  37% {
+    d: path("M -18 0 Q 0 22 18 0");
+  }
+  50% {
+    d: path("M -18 0 Q 0 16 18 0");
+  }
+  62% {
+    d: path("M -18 0 Q 0 8 18 0");
+  }
+  75% {
+    d: path("M -18 0 Q 0 2 18 0");
+  }
+  87% {
+    d: path("M -18 0 Q 0 10 18 0");
+  }
+  100% {
+    d: path("M -18 0 Q 0 0 18 0");
+  }
+}
+
+@keyframes mouth-top-flap {
+  0% {
+    d: path("M -18 0 Q 0 0 18 0");
+  }
+  12% {
+    d: path("M -18 0 Q 0 -8 18 0");
+  }
+  25% {
+    d: path("M -18 0 Q 0 -16 18 0");
+  }
+  37% {
+    d: path("M -18 0 Q 0 -22 18 0");
+  }
+  50% {
+    d: path("M -18 0 Q 0 -16 18 0");
+  }
+  62% {
+    d: path("M -18 0 Q 0 -8 18 0");
+  }
+  75% {
+    d: path("M -18 0 Q 0 -2 18 0");
+  }
+  87% {
+    d: path("M -18 0 Q 0 -10 18 0");
+  }
+  100% {
+    d: path("M -18 0 Q 0 0 18 0");
+  }
+}
+
+@keyframes speed-line-out {
+  0% {
+    opacity: 0.9;
+    transform: scaleX(0);
+    transform-origin: left center;
+  }
+  60% {
+    opacity: 0.6;
+    transform: scaleX(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scaleX(1.4);
+  }
+}
+
+@keyframes particle-float {
+  0% {
+    transform: translateY(0) translateX(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-120px) translateX(var(--dx, 20px)) scale(0);
+    opacity: 0;
+  }
+}
+
+@keyframes sweep-line {
+  0% {
+    transform: translateX(-100%);
+    opacity: 1;
+  }
+  60% {
+    transform: translateX(0%);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(110%);
+    opacity: 0;
+  }
+}
+
+@keyframes char-enter-left {
+  0% {
+    transform: translateX(-120px);
+    opacity: 0;
+    filter: blur(8px);
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+@keyframes char-enter-right {
+  0% {
+    transform: translateX(120px);
+    opacity: 0;
+    filter: blur(8px);
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+@keyframes glow-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes number-pop {
+  0% {
+    transform: scale(0.6) translateY(-10px);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.1) translateY(2px);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes progress-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.animate-char-enter-left {
+  animation: char-enter-left 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.animate-char-enter-right {
+  animation: char-enter-right 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.animate-glow {
+  animation: glow-pulse 2.5s ease-in-out infinite;
+}
+.animate-number-pop {
+  animation: number-pop 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
