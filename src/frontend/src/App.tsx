@@ -1,700 +1,522 @@
-import { AnimatePresence } from "motion/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+import {
+  ArrowUp,
+  Bot,
+  ChevronLeft,
+  ChevronRight,
+  MessageSquare,
+  PenSquare,
+  Sparkles,
+} from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { useCallback, useRef, useState } from "react";
 
-const characters = [
+type Role = "user" | "assistant";
+
+interface Message {
+  id: string;
+  role: Role;
+  content: string;
+  timestamp: Date;
+}
+
+interface Chat {
+  id: string;
+  title: string;
+  messages: Message[];
+  lastUpdated: Date;
+}
+
+const CANNED_RESPONSES = [
+  "That's a great question! Here's what I think — the key is to break it down into smaller parts and tackle each one methodically. Would you like me to walk you through the steps?",
+  "I can help with that! Let me give you a clear and concise answer. The short version is: yes, this is absolutely doable with the right approach.",
+  "Interesting! Let me think about that... From what I understand, there are a few different angles you could approach this from. The most effective one depends on your specific goals.",
+  "Great point! This is actually something I find fascinating. The underlying principle here is that complexity often hides simplicity — once you see the pattern, everything clicks into place.",
+  "Absolutely, happy to help! Based on what you've shared, I'd suggest starting with a clear objective and working backwards from there. That tends to produce the best results.",
+  "That's a nuanced topic! The answer really depends on context, but in most cases the best practice is to prioritize clarity over cleverness. Simple solutions tend to be more robust.",
+  "Good question — this comes up often. The key insight is that consistency matters more than perfection. Small, steady progress compounds into significant results over time.",
+  "I love this kind of question! Here's my take: there isn't a single right answer, but there are definitely better and worse approaches. Let me outline the trade-offs for you.",
+];
+
+const INITIAL_CHATS: Chat[] = [
   {
-    name: "Mizuki Hoshina",
-    trait: "Blue Hair • Slim & Fit • 6ft",
-    image: "/assets/uploads/Mizuki-Hoshina-1.jpg",
-    color: "#3b82f6",
+    id: "1",
+    title: "How does React state work?",
+    lastUpdated: new Date(Date.now() - 1000 * 60 * 30),
+    messages: [
+      {
+        id: "m1",
+        role: "user",
+        content: "How does React state work?",
+        timestamp: new Date(Date.now() - 1000 * 60 * 30),
+      },
+      {
+        id: "m2",
+        role: "assistant",
+        content:
+          "React state is a built-in object that stores data which can change over time. When state changes, React re-renders the component automatically, keeping your UI in sync with your data.",
+        timestamp: new Date(Date.now() - 1000 * 60 * 29),
+      },
+    ],
   },
   {
-    name: "Haru Minazuki",
-    trait: "Yellow Hair • Slim & Fit • 5.5ft",
-    image: "/assets/uploads/Haru-Minazuki-2.jpg",
-    color: "#eab308",
+    id: "2",
+    title: "Best practices for TypeScript",
+    lastUpdated: new Date(Date.now() - 1000 * 60 * 60 * 2),
+    messages: [
+      {
+        id: "m3",
+        role: "user",
+        content: "What are the best practices for TypeScript?",
+        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2),
+      },
+      {
+        id: "m4",
+        role: "assistant",
+        content:
+          "Great question! Key TypeScript best practices include: enabling strict mode, preferring interfaces over type aliases for objects, using discriminated unions for complex state, and avoiding `any` in favor of `unknown` when the type is truly unknown.",
+        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2),
+      },
+    ],
   },
   {
-    name: "Ren Suikage",
-    trait: "Black Hair • Slim & Thick • 6ft",
-    image: "/assets/uploads/Ren-Suikage--3.jpg",
-    color: "#f97316",
+    id: "3",
+    title: "Explain async/await",
+    lastUpdated: new Date(Date.now() - 1000 * 60 * 60 * 5),
+    messages: [
+      {
+        id: "m5",
+        role: "user",
+        content: "Can you explain async/await in JavaScript?",
+        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 5),
+      },
+      {
+        id: "m6",
+        role: "assistant",
+        content:
+          "Async/await is syntactic sugar over Promises that makes asynchronous code look and behave more like synchronous code. The `async` keyword marks a function as asynchronous, and `await` pauses execution until a Promise resolves.",
+        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 5),
+      },
+    ],
   },
   {
-    name: "Emi Kisaragi",
-    trait: "Black Hair • Chubby • 5.6ft",
-    image: "/assets/uploads/Emi-Kisaragi-4.jpg",
-    color: "#ec4899",
+    id: "4",
+    title: "CSS Grid vs Flexbox",
+    lastUpdated: new Date(Date.now() - 1000 * 60 * 60 * 24),
+    messages: [],
   },
   {
-    name: "Suijin Arashi",
-    trait: "Red Hair • Aggressive & Fit • 6ft",
-    image: "/assets/uploads/Suijin-Arashi-5.jpg",
-    color: "#ef4444",
-  },
-  {
-    name: "Yuna Shirohana",
-    trait: "Yellow Hair • Thin • 5.9ft",
-    image: "/assets/uploads/Yuna-Shirohana-6.jpg",
-    color: "#f59e0b",
-  },
-  {
-    name: "Raito Aokawa",
-    trait: "Blue Hair • Slim & Fit • 6ft",
-    image: "/assets/uploads/Raito-Aokawa-7.jpg",
-    color: "#6366f1",
-  },
-  {
-    name: "Sakura Amayori",
-    trait: "Green Hair • Gym Body • 5.8ft",
-    image: "/assets/uploads/Sakura-Amayori-8.jpg",
-    color: "#22c55e",
-  },
-  {
-    name: "Airi Hanazora",
-    trait: "Red Hair • Slim & Fit • 6ft",
-    image: "/assets/uploads/Airi-Hanazora-9.jpg",
-    color: "#f43f5e",
-  },
-  {
-    name: "Kaizen Mizuryu",
-    trait: "Green Hair • Gym Muscles • 6ft",
-    image: "/assets/uploads/Kaizen-Mizuryu-10.jpg",
-    color: "#10b981",
+    id: "5",
+    title: "Building REST APIs",
+    lastUpdated: new Date(Date.now() - 1000 * 60 * 60 * 48),
+    messages: [],
   },
 ];
 
-const REVEAL_DURATION = 2500;
-const AUTO_ADVANCE = 5000;
-
-function Particles({ color }: { color: string }) {
-  const particles = Array.from({ length: 18 }, (_, i) => i);
+function TypingIndicator() {
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      {particles.map((i) => {
-        const left = 10 + Math.random() * 80;
-        const bottom = 5 + Math.random() * 40;
-        const delay = Math.random() * 2.5;
-        const dur = 1.8 + Math.random() * 1.5;
-        const size = 3 + Math.random() * 6;
-        const dx = (Math.random() - 0.5) * 60;
-        return (
-          <div
-            key={i}
-            style={
-              {
-                position: "absolute",
-                left: `${left}%`,
-                bottom: `${bottom}%`,
-                width: size,
-                height: size,
-                borderRadius: "50%",
-                background: color,
-                boxShadow: `0 0 6px 2px ${color}88`,
-                animation: `particle-float ${dur}s ${delay}s ease-out infinite`,
-                "--dx": `${dx}px`,
-              } as React.CSSProperties
-            }
-          />
-        );
-      })}
-    </div>
-  );
-}
-
-function SpeedLines({ color }: { color: string }) {
-  const lines = Array.from({ length: 20 }, (_, i) => i);
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      {lines.map((i) => {
-        const top = (i / 20) * 100;
-        const width = 40 + Math.random() * 50;
-        const delay = Math.random() * 0.4;
-        const thickness = 1 + Math.random() * 2;
-        return (
-          <div
-            key={i}
-            style={{
-              position: "absolute",
-              top: `${top}%`,
-              left: 0,
-              width: `${width}%`,
-              height: thickness,
-              background: `linear-gradient(to right, transparent, ${color}66, transparent)`,
-              animation: `speed-line-out 0.7s ${delay}s cubic-bezier(0.22,1,0.36,1) forwards`,
-              opacity: 0,
+    <div className="flex items-end gap-3 px-4 py-2">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20 ring-1 ring-primary/30">
+        <Sparkles className="h-4 w-4 text-primary" />
+      </div>
+      <div className="rounded-2xl rounded-bl-sm bg-card border border-border px-4 py-3">
+        <div className="flex items-center gap-1.5">
+          <motion.span
+            className="h-2 w-2 rounded-full bg-muted-foreground"
+            animate={{ opacity: [0.3, 1, 0.3] }}
+            transition={{
+              duration: 1.2,
+              repeat: Number.POSITIVE_INFINITY,
+              delay: 0,
             }}
           />
-        );
-      })}
+          <motion.span
+            className="h-2 w-2 rounded-full bg-muted-foreground"
+            animate={{ opacity: [0.3, 1, 0.3] }}
+            transition={{
+              duration: 1.2,
+              repeat: Number.POSITIVE_INFINITY,
+              delay: 0.2,
+            }}
+          />
+          <motion.span
+            className="h-2 w-2 rounded-full bg-muted-foreground"
+            animate={{ opacity: [0.3, 1, 0.3] }}
+            transition={{
+              duration: 1.2,
+              repeat: Number.POSITIVE_INFINITY,
+              delay: 0.4,
+            }}
+          />
+        </div>
+      </div>
     </div>
   );
 }
 
-function MouthOverlay({ color, active }: { color: string; active: boolean }) {
-  if (!active) return null;
+function MessageBubble({ message }: { message: Message }) {
+  const isUser = message.role === "user";
   return (
-    <div
-      style={{
-        position: "absolute",
-        top: "32%",
-        left: "50%",
-        transform: "translateX(-50%)",
-        pointerEvents: "none",
-        zIndex: 20,
-        filter: `drop-shadow(0 0 6px ${color})`,
-      }}
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, ease: "easeOut" }}
+      className={cn(
+        "flex items-end gap-3 px-4 py-2",
+        isUser && "flex-row-reverse",
+      )}
     >
-      <svg
-        role="img"
-        aria-label="Talking mouth animation"
-        width="60"
-        height="36"
-        viewBox="-22 -14 44 30"
-        style={{ overflow: "visible" }}
+      {!isUser && (
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20 ring-1 ring-primary/30">
+          <Sparkles className="h-4 w-4 text-primary" />
+        </div>
+      )}
+      <div
+        className={cn(
+          "max-w-[72%] rounded-2xl px-4 py-3 text-sm leading-relaxed",
+          isUser
+            ? "rounded-br-sm bg-primary text-primary-foreground"
+            : "rounded-bl-sm bg-card border border-border text-foreground",
+        )}
       >
-        <ellipse cx="0" cy="4" rx="18" ry="10" fill="#fff" opacity="0.92" />
-        <ellipse cx="0" cy="10" rx="9" ry="5" fill="#e87a8a" opacity="0.8" />
-        <path
-          d="M -18 0 Q 0 0 18 0"
-          fill="none"
-          stroke={color}
-          strokeWidth="3"
-          strokeLinecap="round"
-          style={{ animation: "mouth-flap 0.12s steps(1) infinite" }}
-        />
-        <path
-          d="M -18 0 Q 0 0 18 0"
-          fill="none"
-          stroke={color}
-          strokeWidth="3"
-          strokeLinecap="round"
-          style={{ animation: "mouth-top-flap 0.12s steps(1) infinite" }}
-        />
-        <ellipse
-          cx="0"
-          cy="3"
-          rx="18"
-          ry="12"
-          fill="none"
-          stroke="#1a0a0a"
-          strokeWidth="2"
-          opacity="0.7"
-        />
-      </svg>
-    </div>
+        {message.content}
+      </div>
+      {isUser && (
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted ring-1 ring-border">
+          <span className="text-xs font-bold text-muted-foreground">U</span>
+        </div>
+      )}
+    </motion.div>
   );
 }
 
-function useTypewriter(text: string, duration: number, active: boolean) {
-  const [displayed, setDisplayed] = useState("");
-  const [done, setDone] = useState(false);
-
-  useEffect(() => {
-    if (!active) {
-      setDisplayed("");
-      setDone(false);
-      return;
-    }
-    setDisplayed("");
-    setDone(false);
-    const total = text.length;
-    const interval = duration / total;
-    const timers: ReturnType<typeof setTimeout>[] = [];
-
-    for (let i = 1; i <= total; i++) {
-      const t = setTimeout(() => {
-        setDisplayed(text.slice(0, i));
-        if (i === total) setDone(true);
-      }, interval * i);
-      timers.push(t);
-    }
-    return () => timers.forEach(clearTimeout);
-  }, [text, duration, active]);
-
-  return { displayed, done };
+function EmptyState() {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-6 px-8 text-center">
+      <motion.div
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
+        className="flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10 ring-1 ring-primary/20"
+      >
+        <Bot className="h-10 w-10 text-primary" />
+      </motion.div>
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.1 }}
+        className="space-y-2"
+      >
+        <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+          How can I help you?
+        </h2>
+        <p className="max-w-sm text-sm text-muted-foreground">
+          Ask me anything — I'm here to help with code, writing, analysis, or
+          just a good conversation.
+        </p>
+      </motion.div>
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.2 }}
+        className="grid w-full max-w-sm grid-cols-2 gap-2"
+      >
+        {[
+          "Explain a concept",
+          "Help me write code",
+          "Review my work",
+          "Brainstorm ideas",
+        ].map((suggestion) => (
+          <button
+            key={suggestion}
+            type="button"
+            className="rounded-xl border border-border bg-card px-3 py-2.5 text-left text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent hover:text-foreground"
+          >
+            {suggestion}
+          </button>
+        ))}
+      </motion.div>
+    </div>
+  );
 }
 
 export default function App() {
-  const [current, setCurrent] = useState(0);
-  const [sweeping, setSweeping] = useState(false);
-  const [speedLines, setSpeedLines] = useState(false);
-  const [typing, setTyping] = useState(true);
-  const [particleKey, setParticleKey] = useState(0);
-  const autoRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [chats, setChats] = useState<Chat[]>(INITIAL_CHATS);
+  const [activeChatId, setActiveChatId] = useState<string>("1");
+  const [input, setInput] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const char = characters[current];
-  const { displayed, done } = useTypewriter(char.name, REVEAL_DURATION, typing);
+  const activeChat = chats.find((c) => c.id === activeChatId) ?? chats[0];
 
-  const goTo = useCallback((idx: number) => {
-    if (autoRef.current) clearTimeout(autoRef.current);
-    setSweeping(true);
-    setSpeedLines(false);
-    setTyping(false);
-    setTimeout(() => {
-      setCurrent(idx);
-      setParticleKey((k) => k + 1);
-      setSweeping(false);
-      setSpeedLines(true);
-      setTyping(true);
-      setTimeout(() => setSpeedLines(false), 900);
-    }, 350);
-  }, []);
-
-  const next = useCallback(
-    () => goTo((current + 1) % characters.length),
-    [current, goTo],
-  );
-  const prev = useCallback(
-    () => goTo((current - 1 + characters.length) % characters.length),
-    [current, goTo],
-  );
-  const replay = useCallback(() => goTo(0), [goTo]);
-
-  useEffect(() => {
-    autoRef.current = setTimeout(next, AUTO_ADVANCE);
-    return () => {
-      if (autoRef.current) clearTimeout(autoRef.current);
+  const createNewChat = useCallback(() => {
+    const newChat: Chat = {
+      id: Date.now().toString(),
+      title: "New conversation",
+      messages: [],
+      lastUpdated: new Date(),
     };
-  }, [next]);
-
-  useEffect(() => {
-    setSpeedLines(true);
-    const t = setTimeout(() => setSpeedLines(false), 900);
-    return () => clearTimeout(t);
+    setChats((prev) => [newChat, ...prev]);
+    setActiveChatId(newChat.id);
+    setInput("");
+    textareaRef.current?.focus();
   }, []);
 
-  const fromLeft = current % 2 === 0;
-  const numLabel = String(current + 1).padStart(2, "0");
+  const sendMessage = useCallback(async () => {
+    const trimmed = input.trim();
+    if (!trimmed || isTyping) return;
+
+    const userMsg: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      content: trimmed,
+      timestamp: new Date(),
+    };
+
+    const titleFromMsg =
+      trimmed.length > 40 ? `${trimmed.slice(0, 40)}...` : trimmed;
+
+    setChats((prev) =>
+      prev.map((c) =>
+        c.id === activeChatId
+          ? {
+              ...c,
+              messages: [...c.messages, userMsg],
+              title: c.messages.length === 0 ? titleFromMsg : c.title,
+              lastUpdated: new Date(),
+            }
+          : c,
+      ),
+    );
+    setInput("");
+    setIsTyping(true);
+
+    const delay = 1000 + Math.random() * 1000;
+    await new Promise((resolve) => setTimeout(resolve, delay));
+
+    const response =
+      CANNED_RESPONSES[Math.floor(Math.random() * CANNED_RESPONSES.length)];
+    const aiMsg: Message = {
+      id: (Date.now() + 1).toString(),
+      role: "assistant",
+      content: response,
+      timestamp: new Date(),
+    };
+
+    setChats((prev) =>
+      prev.map((c) =>
+        c.id === activeChatId
+          ? { ...c, messages: [...c.messages, aiMsg], lastUpdated: new Date() }
+          : c,
+      ),
+    );
+    setIsTyping(false);
+    setTimeout(
+      () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }),
+      50,
+    );
+  }, [input, isTyping, activeChatId]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    },
+    [sendMessage],
+  );
+
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      setInput(e.target.value);
+      const el = e.target;
+      el.style.height = "auto";
+      el.style.height = `${Math.min(el.scrollHeight, 180)}px`;
+    },
+    [],
+  );
 
   return (
-    <div
-      className="relative w-screen h-screen overflow-hidden flex flex-col"
-      style={{
-        background: "#0a0a0f",
-        fontFamily: "'Bricolage Grotesque', system-ui, sans-serif",
-      }}
-    >
-      <style>{`
-        @keyframes mouth-flap {
-          0%   { d: path('M -18 0 Q 0 2 18 0'); }
-          16%  { d: path('M -18 0 Q 0 10 18 0'); }
-          33%  { d: path('M -18 0 Q 0 18 18 0'); }
-          50%  { d: path('M -18 0 Q 0 22 18 0'); }
-          66%  { d: path('M -18 0 Q 0 14 18 0'); }
-          83%  { d: path('M -18 0 Q 0 6 18 0'); }
-          100% { d: path('M -18 0 Q 0 2 18 0'); }
-        }
-        @keyframes mouth-top-flap {
-          0%   { d: path('M -18 0 Q 0 -2 18 0'); }
-          16%  { d: path('M -18 0 Q 0 -10 18 0'); }
-          33%  { d: path('M -18 0 Q 0 -18 18 0'); }
-          50%  { d: path('M -18 0 Q 0 -22 18 0'); }
-          66%  { d: path('M -18 0 Q 0 -14 18 0'); }
-          83%  { d: path('M -18 0 Q 0 -6 18 0'); }
-          100% { d: path('M -18 0 Q 0 -2 18 0'); }
-        }
-        @keyframes particle-float {
-          0%   { transform: translateY(0) translateX(0) scale(1); opacity: 0.9; }
-          100% { transform: translateY(-140px) translateX(var(--dx, 20px)) scale(0.1); opacity: 0; }
-        }
-        @keyframes speed-line-out {
-          0%   { opacity: 0; width: 0%; }
-          20%  { opacity: 0.7; }
-          80%  { opacity: 0.4; width: 100%; }
-          100% { opacity: 0; width: 100%; }
-        }
-        @keyframes sweep-across {
-          0%   { transform: translateX(-100%); opacity: 1; }
-          55%  { transform: translateX(0%); opacity: 1; }
-          100% { transform: translateX(110%); opacity: 0; }
-        }
-        @keyframes glow-pulse {
-          0%, 100% { opacity: 0.3; transform: scale(1); }
-          50%      { opacity: 0.55; transform: scale(1.1); }
-        }
-        @keyframes enter-left {
-          from { transform: translateX(-160px) scale(0.92); opacity: 0; filter: blur(12px); }
-          to   { transform: translateX(0) scale(1); opacity: 1; filter: blur(0); }
-        }
-        @keyframes enter-right {
-          from { transform: translateX(160px) scale(0.92); opacity: 0; filter: blur(12px); }
-          to   { transform: translateX(0) scale(1); opacity: 1; filter: blur(0); }
-        }
-        @keyframes number-pop {
-          from { transform: scale(0.5); opacity: 0; }
-          70%  { transform: scale(1.15); opacity: 1; }
-          to   { transform: scale(1); opacity: 1; }
-        }
-        @keyframes trait-fade {
-          from { opacity: 0; transform: translateY(12px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes progress-fill {
-          from { transform: scaleX(0); }
-          to   { transform: scaleX(1); }
-        }
-        @keyframes blink-cursor {
-          0%, 100% { opacity: 1; }
-          50%      { opacity: 0; }
-        }
-      `}</style>
+    <div className="flex h-screen w-screen overflow-hidden bg-background">
+      {/* Sidebar */}
+      <AnimatePresence initial={false}>
+        {sidebarOpen && (
+          <motion.aside
+            key="sidebar"
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 260, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: "easeInOut" }}
+            className="flex h-full shrink-0 flex-col overflow-hidden border-r border-border bg-sidebar"
+            data-ocid="chat.panel"
+          >
+            <div className="flex h-14 shrink-0 items-center justify-between px-4">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                <span className="text-sm font-semibold tracking-tight text-foreground">
+                  CaffeineAI
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                onClick={createNewChat}
+                data-ocid="chat.open_modal_button"
+                aria-label="New chat"
+              >
+                <PenSquare className="h-4 w-4" />
+              </Button>
+            </div>
 
-      {/* Background glow aura */}
-      <div
-        key={`glow-${current}`}
-        style={{
-          position: "absolute",
-          bottom: 0,
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: "70vw",
-          height: "75vh",
-          borderRadius: "50%",
-          background: `radial-gradient(ellipse at center bottom, ${char.color}55 0%, ${char.color}22 40%, transparent 70%)`,
-          animation: "glow-pulse 2.5s ease-in-out infinite",
-          zIndex: 0,
-        }}
-      />
+            <div className="px-3 pb-2">
+              <Button
+                variant="outline"
+                className="w-full justify-start gap-2 border-border bg-transparent text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+                onClick={createNewChat}
+                data-ocid="chat.primary_button"
+              >
+                <PenSquare className="h-4 w-4" />
+                New chat
+              </Button>
+            </div>
 
-      {/* Sweep line transition */}
-      <AnimatePresence>
-        {sweeping && (
-          <div
-            key="sweep"
-            style={{
-              position: "absolute",
-              inset: 0,
-              background: `linear-gradient(105deg, transparent 20%, ${char.color}cc 50%, transparent 80%)`,
-              animation:
-                "sweep-across 0.55s cubic-bezier(0.4,0,0.2,1) forwards",
-              zIndex: 50,
-              pointerEvents: "none",
-            }}
-          />
+            <ScrollArea className="flex-1 px-2">
+              <div className="space-y-0.5 py-2">
+                <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+                  Recent
+                </p>
+                {chats.map((chat, i) => (
+                  <button
+                    key={chat.id}
+                    type="button"
+                    data-ocid={`chat.item.${i + 1}`}
+                    onClick={() => setActiveChatId(chat.id)}
+                    className={cn(
+                      "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors",
+                      chat.id === activeChatId
+                        ? "bg-accent text-foreground"
+                        : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                    )}
+                  >
+                    <MessageSquare className="h-3.5 w-3.5 shrink-0 opacity-60" />
+                    <span className="truncate">{chat.title}</span>
+                  </button>
+                ))}
+              </div>
+            </ScrollArea>
+
+            <div className="border-t border-border p-4">
+              <p className="text-center text-[10px] text-muted-foreground/40">
+                © {new Date().getFullYear()}.{" "}
+                <a
+                  href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="transition-colors hover:text-muted-foreground"
+                >
+                  caffeine.ai
+                </a>
+              </p>
+            </div>
+          </motion.aside>
         )}
       </AnimatePresence>
 
-      {speedLines && <SpeedLines color={char.color} />}
-
-      {/* Character number top right */}
-      <div
-        key={`num-${current}`}
-        style={{
-          position: "absolute",
-          top: 28,
-          right: 36,
-          zIndex: 10,
-          animation: "number-pop 0.5s cubic-bezier(0.22,1,0.36,1) forwards",
-          textAlign: "right",
-        }}
-      >
-        <span
-          style={{
-            fontSize: 48,
-            fontWeight: 900,
-            color: char.color,
-            lineHeight: 1,
-            letterSpacing: "-2px",
-            textShadow: `0 0 20px ${char.color}99`,
-          }}
-        >
-          {numLabel}
-        </span>
-        <span
-          style={{
-            fontSize: 20,
-            fontWeight: 500,
-            color: "#ffffff55",
-            marginLeft: 4,
-          }}
-        >
-          / {String(characters.length).padStart(2, "0")}
-        </span>
-      </div>
-
-      {/* Character image area */}
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          alignItems: "flex-end",
-          justifyContent: "center",
-          position: "relative",
-          zIndex: 1,
-        }}
-      >
-        <Particles color={char.color} key={particleKey} />
-
-        <div
-          key={`img-${current}`}
-          style={{
-            position: "relative",
-            height: "82vh",
-            maxHeight: 700,
-            display: "flex",
-            alignItems: "flex-end",
-            justifyContent: "center",
-            animation: fromLeft
-              ? "enter-left 0.65s cubic-bezier(0.22,1,0.36,1) forwards"
-              : "enter-right 0.65s cubic-bezier(0.22,1,0.36,1) forwards",
-          }}
-        >
-          <img
-            src={char.image}
-            alt={char.name}
-            style={{
-              height: "100%",
-              width: "auto",
-              maxWidth: "min(480px, 90vw)",
-              objectFit: "contain",
-              objectPosition: "bottom",
-              display: "block",
-              filter: `drop-shadow(0 0 32px ${char.color}66) drop-shadow(0 0 80px ${char.color}33)`,
-              position: "relative",
-              zIndex: 2,
-            }}
-          />
-          <MouthOverlay color={char.color} active={!done} />
-        </div>
-      </div>
-
-      {/* Bottom info + controls */}
-      <div
-        style={{ position: "relative", zIndex: 10, padding: "16px 32px 32px" }}
-      >
-        {/* Name typewriter */}
-        <div
-          style={{
-            marginBottom: 6,
-            minHeight: 72,
-            display: "flex",
-            alignItems: "flex-end",
-          }}
-        >
-          <h1
-            style={{
-              fontSize: "clamp(2.2rem, 6vw, 4rem)",
-              fontWeight: 900,
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-              color: "#ffffff",
-              textShadow: `0 0 40px ${char.color}cc, 0 2px 0 #00000088`,
-              lineHeight: 1,
-              margin: 0,
-            }}
+      {/* Main */}
+      <div className="flex flex-1 flex-col overflow-hidden">
+        {/* Header */}
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            onClick={() => setSidebarOpen((o) => !o)}
+            data-ocid="chat.toggle"
+            aria-label="Toggle sidebar"
           >
-            {displayed}
-            <span
-              style={{
-                display: "inline-block",
-                width: 3,
-                height: "0.85em",
-                background: char.color,
-                marginLeft: 4,
-                verticalAlign: "baseline",
-                animation: done
-                  ? "none"
-                  : "blink-cursor 0.6s steps(1) infinite",
-                opacity: done ? 0 : 1,
-              }}
-            />
+            {sidebarOpen ? (
+              <ChevronLeft className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+          </Button>
+          <h1 className="truncate text-sm font-medium text-foreground">
+            {activeChat?.title ?? "New conversation"}
           </h1>
-        </div>
+        </header>
 
-        {/* Trait */}
-        {done && (
-          <div
-            key={`trait-${current}`}
-            style={{
-              animation: "trait-fade 0.6s ease forwards",
-              marginBottom: 20,
-            }}
-          >
-            <span
-              style={{
-                fontSize: "clamp(0.85rem, 2.2vw, 1.1rem)",
-                fontWeight: 600,
-                letterSpacing: "0.2em",
-                textTransform: "uppercase",
-                color: char.color,
-                textShadow: `0 0 16px ${char.color}88`,
-              }}
-            >
-              {char.trait}
-            </span>
+        {/* Messages */}
+        <ScrollArea className="flex-1">
+          <div className="mx-auto max-w-3xl">
+            {activeChat?.messages.length === 0 && !isTyping ? (
+              <div
+                className="h-[calc(100vh-8rem)]"
+                data-ocid="chat.empty_state"
+              >
+                <EmptyState />
+              </div>
+            ) : (
+              <div className="py-6">
+                {activeChat?.messages.map((msg) => (
+                  <MessageBubble key={msg.id} message={msg} />
+                ))}
+                <AnimatePresence>
+                  {isTyping && (
+                    <motion.div
+                      key="typing"
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      data-ocid="chat.loading_state"
+                    >
+                      <TypingIndicator />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                <div ref={messagesEndRef} />
+              </div>
+            )}
           </div>
-        )}
+        </ScrollArea>
 
-        {/* Progress dots */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            {characters.map((c, i) => (
-              <button
-                type="button"
-                key={c.name}
-                data-ocid={`intro.item.${i + 1}`}
-                onClick={() => goTo(i)}
-                aria-label={`Go to ${c.name}`}
-                style={{
-                  width: i === current ? 32 : 10,
-                  height: 10,
-                  borderRadius: 5,
-                  background: i === current ? c.color : "#ffffff33",
-                  border: "none",
-                  cursor: "pointer",
-                  transition: "all 0.3s ease",
-                  boxShadow: i === current ? `0 0 10px ${c.color}` : "none",
-                  padding: 0,
-                }}
+        {/* Input bar */}
+        <div className="shrink-0 border-t border-border bg-background px-4 py-4">
+          <div className="mx-auto max-w-3xl">
+            <div className="relative flex items-end gap-2 rounded-2xl border border-border bg-card px-4 py-3 shadow-sm transition-all focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20">
+              <Textarea
+                ref={textareaRef}
+                value={input}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyDown}
+                placeholder="Message CaffeineAI..."
+                rows={1}
+                className="max-h-[180px] min-h-[24px] flex-1 resize-none border-0 bg-transparent p-0 text-sm leading-relaxed text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-0 focus-visible:ring-offset-0"
+                data-ocid="chat.input"
               />
-            ))}
-          </div>
-
-          {/* Auto-progress bar */}
-          <div
-            style={{
-              width: "100%",
-              height: 2,
-              background: "#ffffff18",
-              borderRadius: 2,
-              overflow: "hidden",
-            }}
-          >
-            <div
-              key={`bar-${current}`}
-              style={{
-                height: "100%",
-                background: char.color,
-                transformOrigin: "left",
-                animation: `progress-fill ${AUTO_ADVANCE}ms linear forwards`,
-                boxShadow: `0 0 6px ${char.color}`,
-              }}
-            />
+              <Button
+                size="icon"
+                onClick={sendMessage}
+                disabled={!input.trim() || isTyping}
+                className="h-8 w-8 shrink-0 rounded-xl bg-primary text-primary-foreground shadow-none transition-all hover:bg-primary/90 disabled:opacity-30"
+                data-ocid="chat.submit_button"
+                aria-label="Send message"
+              >
+                <ArrowUp className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="mt-2 text-center text-[10px] text-muted-foreground/40">
+              CaffeineAI can make mistakes. Consider checking important
+              information.
+            </p>
           </div>
         </div>
-
-        {/* Nav controls */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 16,
-            marginTop: 20,
-          }}
-        >
-          <button
-            type="button"
-            data-ocid="intro.pagination_prev"
-            onClick={prev}
-            aria-label="Previous character"
-            style={{
-              width: 52,
-              height: 52,
-              borderRadius: "50%",
-              border: `2px solid ${char.color}77`,
-              background: `${char.color}18`,
-              color: char.color,
-              fontSize: 22,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              transition: "all 0.2s",
-              boxShadow: `0 0 12px ${char.color}44`,
-            }}
-          >
-            ◀
-          </button>
-
-          <button
-            type="button"
-            data-ocid="intro.pagination_next"
-            onClick={next}
-            aria-label="Next character"
-            style={{
-              width: 52,
-              height: 52,
-              borderRadius: "50%",
-              border: `2px solid ${char.color}77`,
-              background: `${char.color}18`,
-              color: char.color,
-              fontSize: 22,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              transition: "all 0.2s",
-              boxShadow: `0 0 12px ${char.color}44`,
-            }}
-          >
-            ▶
-          </button>
-
-          <button
-            type="button"
-            data-ocid="intro.primary_button"
-            onClick={replay}
-            style={{
-              padding: "10px 28px",
-              borderRadius: 999,
-              border: `2px solid ${char.color}88`,
-              background: "transparent",
-              color: char.color,
-              fontSize: 13,
-              fontWeight: 800,
-              letterSpacing: "0.25em",
-              textTransform: "uppercase",
-              cursor: "pointer",
-              transition: "all 0.2s",
-              boxShadow: `0 0 16px ${char.color}44`,
-              fontFamily: "inherit",
-            }}
-          >
-            ↺ Replay
-          </button>
-
-          <div style={{ marginLeft: "auto", textAlign: "right" }}>
-            <span
-              style={{
-                fontSize: 11,
-                fontWeight: 700,
-                letterSpacing: "0.3em",
-                textTransform: "uppercase",
-                color: "#ffffff44",
-              }}
-            >
-              CHARACTER INTRO
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: 8,
-          left: "50%",
-          transform: "translateX(-50%)",
-          zIndex: 20,
-          textAlign: "center",
-          whiteSpace: "nowrap",
-        }}
-      >
-        <span
-          style={{ fontSize: 10, color: "#ffffff22", letterSpacing: "0.1em" }}
-        >
-          © {new Date().getFullYear()}. Built with ♥ using{" "}
-          <a
-            href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: "#ffffff44", textDecoration: "underline" }}
-          >
-            caffeine.ai
-          </a>
-        </span>
       </div>
     </div>
   );

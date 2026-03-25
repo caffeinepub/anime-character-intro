@@ -1,29 +1,27 @@
-# Anime Character Introduction
+# AI Chat Assistant Website
 
 ## Current State
-New project, no existing app.
+Existing project is an anime character intro video. This is a new request to build a separate AI-like chat interface website.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Animated intro sequence cycling through all 10 anime characters
-- Each character gets a dramatic entrance animation
-- Talking mouth animation overlay (CSS-animated lip flap) synced to character name reveal
-- Character name and subtitle displayed with typewriter/reveal effect
-- Auto-advancing sequence with manual prev/next controls
-- Cinematic fullscreen presentation with dark overlay and visual effects
-- Skip/replay button
+- A chat UI resembling an AI assistant interface
+- Message input box with send button
+- Chat history display (user messages + AI responses)
+- Simulated AI responses (no real LLM backend needed)
+- Typing indicator animation
+- Clean, modern dark-themed design similar to Claude/ChatGPT
 
 ### Modify
-N/A
+- Replace existing anime intro app with the chat assistant UI
 
 ### Remove
-N/A
+- All anime intro video logic and character data
 
 ## Implementation Plan
-1. Frontend-only app: fullscreen animated intro player
-2. 10 character cards with image, name, and trait data
-3. CSS keyframe animations: slide-in, mouth flap overlay, name typewriter, glow effects
-4. Auto-advance timer (4s per character) with manual navigation
-5. Particle/speed-line background for anime drama effect
-6. Mouth animation implemented as an animated SVG/CSS overlay on the character face region
+1. Redesign frontend as a chat interface
+2. Add message state management (user + assistant messages)
+3. Implement simulated AI response logic with canned responses
+4. Add typing indicator and smooth scroll
+5. Style with dark theme, clean typography
